@@ -1,9 +1,14 @@
 import numpy as np
 import random
+from collections import deque
 
 
 def sigmoid(z):
-    return 1.0 / (1.0 + np.exp(z))
+    return 1.0 / (1.0 + np.exp(-z))
+
+
+def der_sigmoid(z):
+    return np.exp(-z) / np.square(1.0 + np.exp(-z))
 
 
 class NeuralNetwork:
@@ -23,7 +28,32 @@ class NeuralNetwork:
 
     def backpropagation(self, x, y):
 
-        pass
+        der_w = [np.empty(weights.size) for weights in self.weights]
+        der_b = [np.empty(biases.size) for biases in self.biases]
+
+        activations = [x]
+        zs = []
+
+        for w, b in zip(self.weights, self.biases):
+
+            z = np.dot(w, activations[-1]) + b
+            zs.append(z)
+
+            activations.append(sigmoid(z))
+
+        errors = (y - activations[-1]) * der_sigmoid(zs[-1])
+
+        der_b[-1] = errors
+        der_w[-1] = np.dot(activations[-2].reshape((self.layers_size[-2], 1)), errors)
+
+        for i in range(len(zs) - 1, -1):
+
+            errors = np.dot(self.weights[i], errors) * der_sigmoid(zs[i])
+
+            der_b[i] = errors
+            der_w[i] = np.dot(activations[i - 1], errors)
+
+        return der_w, der_b
 
     def update_mini_batch(self, mini_batch, alpha):
 
@@ -67,7 +97,7 @@ class NeuralNetwork:
             else:
                 print("Epoch {0} complete".format(j))
 
-    def predict(self, x):
+    def feedforward(self, x):
 
         a = self.__prepare_input(x)
 
@@ -99,4 +129,6 @@ if __name__ == '__main__':
 
     nn = NeuralNetwork(layers_size=[3, 2, 4, 1])
 
-    print(nn.predict(np.asarray([2, 0, 7])))
+    for w in nn.backpropagation(x=np.asarray([2, 0, 7]), y=np.asarray([1])):
+
+        print(w)
